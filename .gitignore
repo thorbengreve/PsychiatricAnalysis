@@ -1,0 +1,7 @@
+data/
+preprocessed_data/
+old_import/
+__pycache__/
+*.pyc
+.idea/
+*.log
