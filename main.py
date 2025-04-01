@@ -71,24 +71,8 @@ else:
 ''' PCA '''
 
 
-def get_PCA_comp(data_list):
-    comp_list = []
-    for sub in data_list:
-        comp = PCA.PCA_channel(sub)
-        comp_list.append(comp)
-    return comp_list
-
-
-def get_ICA_comp(data_list):
-    comp_list = []
-    for sub in data_list:
-        comp = PCA.ICA_channel(sub)
-        comp_list.append(comp)
-    return comp_list
-
-
-# data_list_MDD = get_PCA_comp(data_list_MDD)
-# data_list_HC = get_PCA_comp(data_list_HC)
+# data_list_MDD = methods.get_PCA_comp(data_list_MDD)
+# data_list_HC = methods.get_PCA_comp(data_list_HC)
 
 ''' THE VIRTUAL BRAIN '''
 

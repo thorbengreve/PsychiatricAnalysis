@@ -6,7 +6,9 @@ from scipy.stats import entropy
 from scipy.signal import welch
 from antropy import perm_entropy
 from scipy.signal import hann
-from scipy.stats import linregress
+from sklearn.decomposition import PCA
+from sklearn.decomposition import FastICA
+from sklearn.preprocessing import StandardScaler
 
 
 def get_psd_with_welch(activity_array, sampling_rate, nperseg=256, noverlap=None):
@@ -21,18 +23,6 @@ def get_psd_with_welch(activity_array, sampling_rate, nperseg=256, noverlap=None
     slope, intercept, r_value, p_value, std_err = linregress(log_freqs, log_powers)
 
     return slope, log_freqs, intercept, frequencies, psd_welch_like
-
-
-def get_exp(activity_array, sampling_rate):
-    """ OLD FUNCTION """
-    fft_result = np.fft.rfft(activity_array)
-    frequencies = np.fft.rfftfreq(len(activity_array), d=1 / sampling_rate)
-    power_spectrum = np.abs(fft_result) ** 2
-    valid_indices = (frequencies > 0)  # & (frequencies < sampling_rate / 2)  # Exclude 0 Hz and very high freqs
-    log_freqs = np.log10(frequencies)[valid_indices]
-    log_powers = np.log10(power_spectrum)[valid_indices]
-    slope, intercept, r_value, p_value, std_err = linregress(log_freqs, log_powers)
-    return slope, log_freqs, intercept, frequencies, power_spectrum
 
 
 def get_p_value_and_r_squared(exp_MDD, exp_HC):
@@ -178,6 +168,53 @@ def compute_permutation_entropy(signal, order=3, delay=1):
     """Compute permutation entropy."""
     return perm_entropy(signal, order=order, delay=delay)
 
+def PCA_channel(eeg_data):
+    n_comp = 50
+    pca = PCA(n_comp)
+    generalized_signal = pca.fit_transform(eeg_data)
+    plt.figure(figsize=(6, 4))
+    plt.bar(range(1, n_comp + 1), pca.explained_variance_ratio_ * 100, alpha=0.7)
+    plt.xlabel("Principal Component")
+    plt.ylabel("Explained Variance (%)")
+    plt.title("PCA Explained Variance")
+    plt.show()
+    return generalized_signal
+
+
+def ICA_channel(eeg_data):
+    n_comp = 128
+
+    # Apply whitening to the data (StandardScaler)
+    eeg_data_whitened = StandardScaler().fit_transform(eeg_data)
+
+    # Apply ICA
+    ica = FastICA(n_comp, random_state=42)
+    independent_components = ica.fit_transform(eeg_data_whitened)
+
+    # Denormalize by scaling the components back
+    # Use the mean and std of the original data
+    eeg_data_mean = np.mean(eeg_data, axis=0)
+    eeg_data_std = np.std(eeg_data, axis=0)
+
+    # Denormalize each component
+    denormalized_components = independent_components * eeg_data_std
+
+    # Compute the power of each denormalized component
+    component_power = np.var(denormalized_components, axis=0)
+
+    # Plot ICA Component Power
+    plt.figure(figsize=(6, 4))
+    plt.bar(range(1, n_comp + 1), component_power, alpha=0.7)
+    plt.xlabel("Independent Component")
+    plt.ylabel("Component Power (Variance)")
+    plt.title("ICA Component Power Distribution")
+    plt.show()
+
+    return independent_components
+
+
+""" FUNCTIONS BELOW ARE MAINLY WRAP UP FUNCTIONS, ACTUAL METRICS ARE COMPUTED ABOVE """
+
 
 def get_exponent(data_list, sampling_rate):
     print('COMPUTING POWER LAW EXPONENT')
@@ -276,6 +313,22 @@ def get_perm_entropy(data_list):
             entr_per_file.append(entr)
         entr_list.append(entr_per_file)
     return entr_list
+
+
+def get_PCA_comp(data_list):
+    comp_list = []
+    for sub in data_list:
+        comp = PCA_channel(sub)
+        comp_list.append(comp)
+    return comp_list
+
+
+def get_ICA_comp(data_list):
+    comp_list = []
+    for sub in data_list:
+        comp = ICA_channel(sub)
+        comp_list.append(comp)
+    return comp_list
 
 
 def combine_MDD_HC(MDD, HC):
